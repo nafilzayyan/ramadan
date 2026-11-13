@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ramadan Al-Amanah</title>
+<style>
+:root{--g:#0b5d52;--gl:#dff1ec;--bg:#f6f3ea;--c:#fffdf7;--t:#1b2a27;--m:#6b7c78;--gold:#c8962e}
+*{box-sizing:border-box}
+body{margin:0;font-family:Georgia,"Times New Roman",serif;background:var(--bg);color:var(--t)}
+main{max-width:560px;margin:auto;padding:16px}
+h1{font-size:1.35rem;color:var(--g);margin:8px 0}
+.card{background:var(--c);border:1px solid #e3dcc8;border-radius:12px;padding:14px;margin:12px 0}
+input,select,button{font:inherit;font-family:system-ui,sans-serif;padding:12px;border-radius:10px;border:1px solid #c9d6d2;width:100%;margin:4px 0;background:#fff}
+button{background:var(--g);color:#fff;border:0;font-weight:600}
+button.s{background:var(--gl);color:var(--g)}
+label.ck{display:flex;align-items:center;gap:14px;padding:12px 2px;font-size:1.05rem;border-bottom:1px solid #eee8d6}
+label.ck input{width:26px;height:26px;margin:0;accent-color:var(--g)}
+.bar{height:12px;background:var(--gl);border-radius:9px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--gold)}
+table{width:100%;border-collapse:collapse;font-size:.88rem;font-family:system-ui,sans-serif}
+td,th{padding:8px 4px;text-align:left;border-bottom:1px solid #eee8d6}
+.w{overflow-x:auto}.m{color:var(--m);font-size:.85rem;font-family:system-ui,sans-serif}
+.r{display:flex;gap:8px;align-items:center}.r>*{flex:1}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%}
+</style></head><body><main id="app"></main>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getFirestore,doc,getDoc,setDoc,getDocs,collection,query,where} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const cfg={apiKey:"AIzaSyCv9hOmBb3wzYdvY47oyvnO84DUDbDKbZc",authDomain:"ramadan-alamanah.firebaseapp.com",projectId:"ramadan-alamanah",storageBucket:"ramadan-alamanah.firebasestorage.app",messagingSenderId:"837161768061",appId:"1:837161768061:web:fb7beeafced57524614d14"};
+const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
+const D="@ramadan.example.com",ADMIN="admin"+D;
+const $=s=>document.getElementById(s),A=$("app");
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ITEMS=[["subuh","Subuh"],["zuhur","Zuhur"],["asar","Asar"],["magrib","Magrib"],["isya","Isya"],["tarawih","Tarawih"],["puasa","Puasa"]];
+const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+const shift=(s,n)=>{const d=new Date(s+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+const top=t=>`<div class="r"><h1>${t}</h1><button class="s" id="out" style="flex:0 0 90px">Keluar</button></div>`;
+const nav=d=>`<div class="r"><button class="s" id="pv">◀</button><b style="text-align:center">${d}</b><button class="s" id="nx">▶</button></div>`;
+A.addEventListener("click",e=>{if(e.target.id==="out")signOut(auth)});
+let me=null;
+
+function loginView(msg=""){
+  A.innerHTML=`<h1>🌙 Ramadan Al-Amanah</h1><div class="card"><input id="u" placeholder="Nama pengguna" autocapitalize="none"><input id="p" type="password" placeholder="PIN" inputmode="numeric"><button id="go">Masuk</button><p class="m" id="msg">${msg}</p></div>`;
+  $("go").onclick=async()=>{try{await signInWithEmailAndPassword(auth,$("u").value.trim().toLowerCase()+D,$("p").value)}catch(e){$("msg").textContent="Nama pengguna atau PIN salah."}};
+}
+
+async function studentView(date=today()){
+  const all=await getDocs(query(collection(db,"logs"),where("uid","==",me.uid)));
+  const logs={};all.forEach(x=>logs[x.data().tanggal]=x.data());
+  const l=logs[date]||{};Object.assign(l,{uid:me.uid,kelas:me.kelas||"",nama:me.nama,tanggal:date});logs[date]=l;
+  A.innerHTML=top("Halo, "+esc(me.nama))+`<div class="card">${nav(date)}
+  ${ITEMS.map(([k,n])=>`<label class="ck"><input type="checkbox" data-k="${k}" ${l[k]?"checked":""}>${n}</label>`).join("")}
+  <p class="m">Tadarus: jumlah halaman hari ini</p><input id="hl" type="number" min="0" max="604" value="${l.halaman||""}">
+  <p class="m">Sedekah / amal baik</p><input id="sd" maxlength="100" value="${esc(l.sedekah||"")}" placeholder="Contoh: membantu ibu">
+  <p class="m" id="st"></p></div>
+  <div class="card"><b>Perjalanan Ramadan</b><p id="sm"></p><div class="bar"><i id="br"></i></div></div>`;
+  const sum=()=>{let h=0,n=0;for(const k in logs){h+=+logs[k].halaman||0;if(ITEMS.some(([i])=>logs[k][i]))n++}
+    $("sm").textContent=`${n} hari terisi, ${h} halaman dibaca (1 khatam = 604 halaman)`;$("br").style.width=Math.min(100,h/604*100)+"%"};
+  const save=async()=>{$("st").textContent="Menyimpan...";try{await setDoc(doc(db,"logs",me.uid+"_"+date),l);$("st").textContent="✓ Tersimpan"}catch(e){$("st").textContent="Gagal menyimpan. Cek koneksi."}sum()};
+  document.querySelectorAll("[data-k]").forEach(c=>c.onchange=()=>{l[c.dataset.k]=c.checked;save()});
+  $("hl").onchange=()=>{l.halaman=Math.max(0,Math.min(604,+$("hl").value||0));save()};
+  $("sd").onchange=()=>{l.sedekah=$("sd").value.trim();save()};
+  $("pv").onclick=()=>studentView(shift(date,-1));$("nx").onclick=()=>studentView(shift(date,1));sum();
+}
+
+async function staffView(date=today()){
+  const g=me.role==="guru",col=collection(db,"logs"),ucol=collection(db,"users");
+  const [ls,us]=await Promise.all([getDocs(g?query(col,where("kelas","==",me.kelas)):col),getDocs(g?query(ucol,where("kelas","==",me.kelas)):ucol)]);
+  const logs={};ls.forEach(x=>{const d=x.data();(logs[d.uid]??={})[d.tanggal]=d});
+  const ms=[];us.forEach(x=>{const d=x.data();if(d.role==="murid")ms.push({id:x.id,...d})});
+  ms.sort((a,b)=>(a.kelas+a.nama).localeCompare(b.kelas+b.nama));
+  const rows=ms.map(m=>{const L=logs[m.id]||{},t=L[date]||{},n=ITEMS.filter(([k])=>t[k]).length;let h=0,hr=0;for(const k in L){h+=+L[k].halaman||0;hr++}
+    const c=!L[date]?"#dc2626":n>=6?"#16a34a":"#d9a008";
+    return `<tr><td><span class="dot" style="background:${c}"></span> ${esc(m.nama)}<div class="m">${esc(m.kelas)}</div></td><td>${n}/7</td><td>${t.halaman||0}</td><td>${h}</td><td>${hr}</td></tr>`}).join("");
+  const adm=!g?`<div class="card"><b>Tambah akun</b><input id="nm" placeholder="Nama lengkap"><input id="un" placeholder="Nama pengguna (huruf kecil/angka)" autocapitalize="none"><input id="pn" placeholder="PIN (6 angka)" inputmode="numeric" maxlength="6"><select id="rl"><option value="murid">Murid / wali murid</option><option value="guru">Guru</option></select><input id="kl" placeholder="Kelas (contoh: 3A)"><button id="add">Buat akun</button><p class="m" id="am"></p></div>`:"";
+  A.innerHTML=top(g?"Guru kelas "+esc(me.kelas):"Panitia Ramadan")+`<div class="card">${nav(date)}
+  <p class="m">Hijau: lengkap • Kuning: sebagian • Merah: belum mengisi</p><div class="w"><table><tr><th>Murid</th><th>Ibadah</th><th>Hal.</th><th>Total hal.</th><th>Hari</th></tr>${rows||"<tr><td colspan=5>Belum ada murid.</td></tr>"}</table></div></div>${adm}`;
+  $("pv").onclick=()=>staffView(shift(date,-1));$("nx").onclick=()=>staffView(shift(date,1));
+  if(!g)$("add").onclick=async()=>{
+    const nama=$("nm").value.trim(),un=$("un").value.trim().toLowerCase(),pin=$("pn").value.trim(),kelas=$("kl").value.trim().toUpperCase();
+    if(!nama||!/^[a-z0-9._]+$/.test(un)||!/^\d{6}$/.test(pin)||!kelas)return $("am").textContent="Lengkapi data. Nama pengguna huruf/angka, PIN 6 angka.";
+    try{const sec=getAuth(initializeApp(cfg,"sec"+Date.now())),r=await createUserWithEmailAndPassword(sec,un+D,pin);
+      await setDoc(doc(db,"users",r.user.uid),{nama,role:$("rl").value,kelas});await signOut(sec);
+      await staffView(date);$("am").textContent="✓ Akun "+un+" dibuat."}
+    catch(e){$("am").textContent="Gagal: "+(e.code==="auth/email-already-in-use"?"nama pengguna sudah dipakai":e.code)}};
+}
+
+onAuthStateChanged(auth,async u=>{
+  if(!u){me=null;return loginView()}
+  if(u.email===ADMIN){me={uid:u.uid,role:"admin"};return staffView()}
+  try{const s=await getDoc(doc(db,"users",u.uid));
+    if(!s.exists())throw 0;me={uid:u.uid,...s.data()};me.role==="murid"?studentView():staffView()}
+  catch(e){await signOut(auth);loginView("Akun belum terdaftar.")}
+});
+</script></body></html>
