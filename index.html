@@ -190,4 +190,32 @@ bindIn=function(){
   $("pv").onclick=()=>{date=shift(date,-1);go("input")};
   $("nx").onclick=()=>{if(date<today()){date=shift(date,1);go("input")}};
 };
+  document.head.insertAdjacentHTML("beforeend",`<style>.rp{break-after:page}@media print{#sb,header,.np{display:none!important}.mn{margin:0!important}body{background:#fff;color:#000}#pg{max-width:none;padding:0}.card{border:0;margin:0}}</style>`);
+const pred=v=>v>=85?"Sangat Baik":v>=70?"Baik":v>=50?"Cukup":"Perlu Ditingkatkan";
+const srt=a=>[...a].sort((x,y)=>(x.kelas+x.nama).localeCompare(y.kelas+y.nama));
+const rk=u=>{const L=LOGS[u.id]||{},ds=Object.values(L),c=k=>ds.filter(l=>l[k]).length;
+  return{c,s:stat(L),av:Math.round(ALL.reduce((t,[k])=>t+c(k),0)/(30*ALL.length)*100)}};
+const raporHTML=u=>{const r=rk(u);
+  return `<div class="lg" style="color:var(--t)"><img src="${LOGO}"><div><b style="font-size:1.2rem">Rapor Ramadan 1448 H</b><div class="m">SD Islam Al-Amanah</div></div></div><p><b>${esc(u.nama)}</b><br><span class="m">Kelas ${esc(u.kelas)}</span></p><table><tr><th>Ibadah</th><th>Hari</th><th>%</th></tr>${ALL.map(([k,n])=>`<tr><td>${n}</td><td>${r.c(k)}/30</td><td>${Math.round(r.c(k)/30*100)}%</td></tr>`).join("")}</table>${bar("Salat wajib lengkap",r.s.w,30)}${bar("Sunnah lengkap (Dhuha + Tarawih)",r.s.s,30)}${bar("Puasa",r.s.p,30)}${bar("Bacaan menuju 1 khatam",r.s.h,604,"halaman")}<p><b>Capaian: ${r.av}% · ${pred(r.av)}</b></p><p class="m">Catatan wali kelas:<br><br>______________________________</p>`};
+const raporPage=()=>{
+  const sel=me.role==="murid"?"":`<select id="rs"><option value="">Semua siswa</option>${srt(USERS).map(u=>`<option value="${u.id}">${esc(u.nama)} (${esc(u.kelas)})</option>`).join("")}</select>`;
+  return `<div class="card np">${sel}<div class="r"><button id="pr">🖨️ Cetak / PDF</button>${me.role==="murid"?"":'<button id="xl">⬇️ Unduh Excel</button>'}</div><p class="m">Di jendela cetak, pilih "Simpan sebagai PDF".</p></div><div id="rb"></div>`};
+const fillRp=()=>{const v=$("rs")?.value||"",us=v?USERS.filter(u=>u.id===v):srt(USERS);
+  $("rb").innerHTML=us.map(u=>`<div class="card rp">${raporHTML(u)}</div>`).join("")||'<p class="m">Belum ada data.</p>'};
+const exportXl=()=>{
+  const hd=["Nama","Kelas",...ALL.map(a=>a[1]),"Wajib lengkap","Sunnah lengkap","Hari puasa","Total halaman","Capaian %","Predikat"];
+  const rows=srt(USERS).map(u=>{const r=rk(u);return[u.nama,u.kelas,...ALL.map(([k])=>r.c(k)),r.s.w,r.s.s,r.s.p,r.s.h,r.av,pred(r.av)]});
+  const csv="\uFEFF"+[hd,...rows].map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="rapor-ramadan.csv";a.click()};
+const _go=go,_shell=shell;
+shell=function(){_shell();$("sb").insertAdjacentHTML("beforeend",`<button class="nv" data-p="rapor">📄 Rapor Ramadan</button>`)};
+go=function(p){
+  if(p!=="rapor")return _go(p);
+  $("sb").classList.remove("o");
+  document.querySelectorAll(".nv").forEach(b=>b.classList.toggle("on",b.dataset.p===p));
+  $("pg").innerHTML=raporPage();fillRp();
+  if($("rs"))$("rs").onchange=fillRp;
+  $("pr").onclick=()=>window.print();
+  if($("xl"))$("xl").onclick=exportXl;
+};
 </script></body></html>
