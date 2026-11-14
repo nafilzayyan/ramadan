@@ -264,4 +264,98 @@ input=function(){
 document.addEventListener("change",e=>{if(e.target.dataset?.k===undefined)return;
   const n=document.querySelectorAll("[data-k]:checked").length;
   if($("pp")){$("pp").style.width=n/9*100+"%";$("pt").textContent=n+"/9 ibadah hari ini"+(n===9?" 🎉 MasyaAllah, lengkap!":"")}});
+  let CFG={start:"2027-02-08",days:29};
+const D1=s=>Date.parse(s+"T00:00:00Z");
+const dn=d=>Math.round((D1(d)-D1(CFG.start))/864e5)+1;
+const inR=d=>{const n=dn(d);return n>=1&&n<=CFG.days};
+const DT=n=>shift(CFG.start,n-1);
+const TR=n=>n<CFG.days;
+const fd=d=>new Date(D1(d)).toLocaleDateString("id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"UTC"});
+const c2=(l,d)=>l?ALL.filter(([k])=>l[k]&&(k!=="tarawih"||TR(dn(d)))).length:0;
+const mx=d=>TR(dn(d))?9:8;
+const st2=L=>{let w=0,s=0,p=0,h=0,t=0;for(const d in L){const l=L[d],n=dn(d);if(W.every(([k])=>l[k]))w++;if(l.dhuha&&(!TR(n)||l.tarawih))s++;if(l.puasa)p++;if(l.tarawih&&TR(n))t++;h+=+l.halaman||0}return{w,s,p,h,t}};
+const can=d=>inR(d)&&d<=today()&&d>=shift(today(),-3);
+const lastD=()=>{const t=today(),e=DT(CFG.days);return t<e?t:e};
+const EM={subuh:"🌅",zuhur:"☀️",asar:"🌤️",magrib:"🌇",isya:"🌙",dhuha:"🌞",tarawih:"🕋",dzikir:"📿",puasa:"⏳"};
+const loadCfg=async()=>{try{const s=await getDoc(doc(db,"config","ramadan"));if(s.exists())CFG={...CFG,...s.data()}}catch(e){}};
+const _ld=loadData;
+loadData=async function(){await loadCfg();await _ld();for(const u in LOGS)for(const d in LOGS[u])if(!inR(d))delete LOGS[u][d]};
+
+input=function(){
+  const T=today(),tn=dn(T);
+  if(tn<1)return `<div class="hero2"><h2>Ramadan belum dimulai</h2><p>${1-tn} hari lagi · ${fd(CFG.start)}</p></div>`;
+  if(!inR(date)||date>T)date=lastD();
+  const n=dn(date),m=mx(date),L=LOGS[me.uid]??={},l=L[date]??={},c=c2(l,date),dis=can(date)?"":"disabled";
+  const pl=(a,cl)=>a.filter(([k])=>k!=="tarawih"||TR(n)).map(([k,t])=>`<label class="pill ${cl}"><input type="checkbox" data-k="${k}" ${l[k]?"checked":""} ${dis}><span>${EM[k]} ${t}</span></label>`).join("");
+  const bc=(l.bacaan||[]).map((e,i)=>`<div class="r2" style="align-items:center"><span>${NM[e.s]} ${e.a}-${e.b}</span><span>${e.h} hal <button class="ic" data-x="${i}" ${dis}>✕</button></span></div>`).join("");
+  return `<div class="hero2"><div class="r"><button class="ic" id="pv">◀</button><b style="text-align:center">Hari ke-${n} dari ${CFG.days}<br><small>${fd(date)}</small><small>${n} Ramadan 1448 H</small></b><button class="ic" id="nx">▶</button></div><div class="pb" style="margin-top:12px"><i id="pp2" style="width:${c/m*100}%"></i></div><p id="pt2" style="margin-top:8px">${c}/${m} ibadah${c===m?" 🎉 MasyaAllah, lengkap!":""}</p>${dis?'<p style="color:#fde68a;font-size:.85rem">Hari ini hanya bisa dilihat (pengisian maksimal 3 hari ke belakang).</p>':""}</div><div class="sec"><h3>🕌 Salat Wajib</h3><div class="pills">${pl(W,"")}</div></div><div class="sec"><h3>🌟 Salat Sunnah</h3><div class="pills">${pl(S,"sn")}</div>${TR(n)?"":'<p class="m">Hari terakhir Ramadan: tidak ada tarawih.</p>'}</div><div class="sec"><h3>✨ Dzikir dan Puasa</h3><div class="pills">${pl(O,"ot")}</div></div><div class="sec"><h3>📖 Bacaan Al-Qur'an · ${l.halaman||0} halaman</h3>${bc||'<p class="m">Belum ada bacaan.</p>'}<select id="bs" ${dis}>${NM.map((x,i)=>`<option value="${i}">${i+1}. ${x}</option>`).join("")}</select><div class="r"><input id="a1" type="number" min="1" placeholder="Dari ayat" ${dis}><input id="a2" type="number" min="1" placeholder="Sampai ayat" ${dis}><input id="bh" type="number" step="0.5" min="0.5" placeholder="Halaman" ${dis}></div><p class="m" id="bi">Halaman terisi otomatis (perkiraan), boleh diubah.</p><button id="add2" ${dis}>Tambah bacaan</button><p class="m" id="st"></p></div>`;
+};
+
+bindIn=function(){
+  if(!$("pv"))return;
+  const l=LOGS[me.uid][date],n=dn(date),m=mx(date);
+  const upd=()=>{const c=c2(l,date);$("pp2").style.width=c/m*100+"%";$("pt2").textContent=c+"/"+m+" ibadah"+(c===m?" 🎉 MasyaAllah, lengkap!":"")};
+  const save=async()=>{l.halaman=(l.bacaan||[]).reduce((t,e)=>t+e.h,0);Object.assign(l,{uid:me.uid,kelas:me.kelas||"",nama:me.nama,tanggal:date});upd();$("st").textContent="Menyimpan...";
+    try{await setDoc(doc(db,"logs",me.uid+"_"+date),l);$("st").textContent="✓ Tersimpan"}catch(e){$("st").textContent="Gagal menyimpan. Cek koneksi."}};
+  document.querySelectorAll("[data-k]").forEach(c=>c.onchange=()=>{l[c.dataset.k]=c.checked;save()});
+  const f=()=>{const s=+$("bs").value,a=+$("a1").value,b=+$("a2").value;$("bi").textContent=NM[s]+" punya "+AY[s]+" ayat.";if(a>=1&&b>=a&&b<=AY[s])$("bh").value=est(s,a,b)};
+  ["bs","a1","a2"].forEach(i=>$(i).oninput=f);
+  $("add2").onclick=async()=>{const s=+$("bs").value,a=+$("a1").value,b=+$("a2").value,h=Math.round(+$("bh").value*2)/2;
+    if(!(a>=1&&b>=a&&b<=AY[s]))return $("bi").textContent="Ayat tidak valid. "+NM[s]+" punya "+AY[s]+" ayat.";
+    if(!(h>0))return $("bi").textContent="Isi jumlah halaman.";
+    (l.bacaan??=[]).push({s,a,b,h});await save();go("input")};
+  document.querySelectorAll("[data-x]").forEach(x=>x.onclick=async()=>{l.bacaan.splice(+x.dataset.x,1);await save();go("input")});
+  $("pv").onclick=()=>{if(n>1){date=shift(date,-1);go("input")}};
+  $("nx").onclick=()=>{if(date<lastD()){date=shift(date,1);go("input")}};
+};
+
+dash=function(){
+  const T=today(),tn=dn(T),N=CFG.days,inn=inR(T),q=QT[Math.floor(Date.now()/864e5)%QT.length];
+  const st=tn<1?`Ramadan dimulai ${1-tn} hari lagi · ${fd(CFG.start)}`:tn>N?"Ramadan telah usai. Jazakumullahu khairan 🤲":`Hari ke-${tn} dari ${N} · ${tn} Ramadan 1448 H`+(tn===17?" · Nuzulul Qur'an 📖":tn>=20?" · 10 malam terakhir ✨":"");
+  const hero=`<div class="hero2"><h2>Assalamualaikum, ${esc(me.nama.split(" ")[0])} 👋</h2><p><b>${st}</b></p><p style="margin-top:8px">“${q[0]}”<small>${q[1]}</small></p></div>`;
+  if(me.role==="murid"){const L=LOGS[me.uid]||{},s=st2(L);
+    const dots=Array.from({length:N},(_,i)=>{const d=DT(i+1),c=c2(L[d],d);return `<span style="background:${d>T?"":c>=mx(d)?"#16a34a":c>0?"#f59e0b":""}"></span>`}).join("");
+    return hero+(inn?`<button data-p="input">✍️ Isi ibadah hari ini</button>`:"")+`<div class="sg">${sc("#f59e0b,#ea580c","✅","Ibadah hari ini",inn?c2(L[T],T)+"/"+mx(T):"-")}${sc("#3b82f6,#1d4ed8","📖","Total halaman",s.h)}${sc("#10b981,#047857","🌙","Hari berpuasa",s.p)}${sc("#8b5cf6,#6d28d9","🕌","Salat wajib lengkap",s.w+" hari")}</div><div class="sec"><h3>📈 Perjalanan Ramadan</h3>${bar("Salat wajib lengkap",s.w,N)}${bar("Sunnah lengkap (Dhuha + Tarawih)",s.s,N)}${bar("Puasa",s.p,N)}${bar("Tarawih",s.t,N-1)}${bar("Bacaan menuju 1 khatam",s.h,604,"halaman")}</div><div class="sec"><h3>🗓️ Kalender Ramadan</h3><div class="dots">${dots}</div><p class="m">Hijau: lengkap · Oranye: sebagian · Abu: belum diisi</p></div>`}
+  const no=inn?USERS.filter(u=>!c2(LOGS[u.id]?.[T],T)):[];let h=0;USERS.forEach(u=>h+=st2(LOGS[u.id]||{}).h);
+  const tp=USERS.map(u=>[u,Object.entries(LOGS[u.id]||{}).reduce((t,[d,l])=>t+c2(l,d),0)]).sort((a,b)=>b[1]-a[1]).slice(0,5).filter(x=>x[1]>0);
+  return hero+`<div class="sg">${sc("#3b82f6,#1d4ed8","👥","Total siswa",USERS.length)}${sc("#10b981,#047857","✅","Mengisi hari ini",inn?USERS.length-no.length:0)}${sc("#8b5cf6,#6d28d9","📖","Total halaman",h)}${sc("#f59e0b,#ea580c","⏳","Belum mengisi",no.length)}</div><div class="sec"><h3>⏳ Belum mengisi hari ini</h3>${no.map(u=>`<span class="chip">${esc(u.nama)} · ${esc(u.kelas)}</span>`).join("")||(inn?"Semua sudah mengisi 🎉":"Di luar masa Ramadan")}</div><div class="sec"><h3>🏆 Siswa paling rajin</h3>${tp.map(([u,t],i)=>`<div class="r2"><span>${["🥇","🥈","🥉","4.","5."][i]} ${esc(u.nama)} <span class="m">${esc(u.kelas)}</span></span><b>${t} ibadah</b></div>`).join("")||'<p class="m">Belum ada data.</p>'}</div>`;
+};
+
+fillTb=function(){
+  const q=$("q").value.toLowerCase(),k=$("kf").value,T=today(),inn=inR(T);
+  const rows=USERS.filter(u=>(!k||u.kelas===k)&&u.nama.toLowerCase().includes(q)).sort((a,b)=>(a.kelas+a.nama).localeCompare(b.kelas+b.nama)).map(u=>{
+    const L=LOGS[u.id]||{},s=st2(L),n=inn?c2(L[T],T):0,m=inn?mx(T):9,c=!inn?"#9ca3af":!n?"#dc2626":n>=m-1?"#16a34a":"#d9a008";
+    return `<tr><td><span style="color:${c}">●</span> ${esc(u.nama)}<div class="m">${esc(u.kelas)}</div></td><td>${inn?n+"/"+m:"-"}</td><td>${s.w}</td><td>${s.s}</td><td>${s.p}</td><td>${s.h}</td></tr>`}).join("");
+  $("tb").innerHTML=`<table><tr><th>Siswa</th><th>Hari ini</th><th>Wajib</th><th>Sunnah</th><th>Puasa</th><th>Hal.</th></tr>${rows||"<tr><td colspan=6>Tidak ada data.</td></tr>"}</table><p class="m">● hijau: lengkap, kuning: sebagian, merah: belum mengisi. Wajib, Sunnah, Puasa = jumlah hari lengkap.</p>`;
+};
+
+const rk2=u=>{const L=LOGS[u.id]||{},N=CFG.days,ds=Object.entries(L),c=k=>ds.filter(([d,l])=>l[k]&&(k!=="tarawih"||TR(dn(d)))).length,tot=ALL.reduce((t,[k])=>t+c(k),0);return{c,s:st2(L),av:Math.min(100,Math.round(tot/(N*9-1)*100))}};
+const raporHTML2=u=>{const r=rk2(u),N=CFG.days,M=k=>k==="tarawih"?N-1:N;
+  return `<div class="lg" style="color:var(--t)"><img src="${LOGO}"><div><b style="font-size:1.2rem">Rapor Ramadan 1448 H</b><div class="m">SD Islam Al-Amanah · ${fd(CFG.start)} s.d. ${fd(DT(N))}</div></div></div><p><b>${esc(u.nama)}</b><br><span class="m">Kelas ${esc(u.kelas)}</span></p><table><tr><th>Ibadah</th><th>Hari</th><th>%</th></tr>${ALL.map(([k,t])=>`<tr><td>${t}</td><td>${r.c(k)}/${M(k)}</td><td>${Math.round(r.c(k)/M(k)*100)}%</td></tr>`).join("")}</table>${bar("Salat wajib lengkap",r.s.w,N)}${bar("Sunnah lengkap (Dhuha + Tarawih)",r.s.s,N)}${bar("Puasa",r.s.p,N)}${bar("Bacaan menuju 1 khatam",r.s.h,604,"halaman")}<p><b>Capaian: ${r.av}% · ${pred(r.av)}</b></p><p class="m">Catatan wali kelas:<br><br>______________________________</p>`};
+const xl2=()=>{
+  const hd=["Nama","Kelas",...ALL.map(a=>a[1]),"Wajib lengkap","Sunnah lengkap","Hari puasa","Total halaman","Capaian %","Predikat"];
+  const rows=srt(USERS).map(u=>{const r=rk2(u);return[u.nama,u.kelas,...ALL.map(([k])=>r.c(k)),r.s.w,r.s.s,r.s.p,r.s.h,r.av,pred(r.av)]});
+  const csv="\uFEFF"+[hd,...rows].map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="rapor-ramadan.csv";a.click()};
+
+const _sh2=shell;
+shell=function(){_sh2();if(me.role==="admin")$("sb").insertAdjacentHTML("beforeend",`<button class="nv" data-p="atur">🗓️ Pengaturan Ramadan</button>`)};
+const _g2=go;
+go=function(p){
+  if(p!=="rapor"&&p!=="atur")return _g2(p);
+  $("sb").classList.remove("o");
+  document.querySelectorAll(".nv").forEach(b=>b.classList.toggle("on",b.dataset.p===p));
+  if(p==="rapor"){
+    $("pg").innerHTML=raporPage();
+    const f=()=>{const v=$("rs")?.value||"",us=v?USERS.filter(u=>u.id===v):srt(USERS);$("rb").innerHTML=us.map(u=>`<div class="card rp">${raporHTML2(u)}</div>`).join("")||'<p class="m">Belum ada data.</p>'};
+    f();if($("rs"))$("rs").onchange=f;$("pr").onclick=()=>window.print();if($("xl"))$("xl").onclick=xl2;return}
+  $("pg").innerHTML=`<div class="sec"><h3>🗓️ Pengaturan Ramadan</h3><p class="m">Awal Ramadan (1 Ramadan 1448 H)</p><input id="cs" type="date" value="${CFG.start}"><p class="m">Jumlah hari</p><select id="cd"><option ${CFG.days==29?"selected":""}>29</option><option ${CFG.days==30?"selected":""}>30</option></select><button id="sv">Simpan pengaturan</button><p class="m" id="sm2">Saat ini: ${fd(CFG.start)} sampai ${fd(DT(CFG.days))}.</p></div><div class="sec"><h3>🧹 Hapus data uji coba</h3><p class="m">Menghapus SEMUA catatan ibadah dan bacaan siswa. Akun tetap ada.</p><button id="dl" style="background:#dc2626">Hapus semua catatan</button><p class="m" id="dm"></p></div>`;
+  $("sv").onclick=async()=>{if(!$("cs").value)return;try{await setDoc(doc(db,"config","ramadan"),{start:$("cs").value,days:+$("cd").value});await loadData();go("atur");$("sm2").textContent="✓ Tersimpan. "+$("sm2").textContent}catch(e){$("sm2").textContent="Gagal menyimpan. Cek aturan Firebase."}};
+  $("dl").onclick=async()=>{
+    if(!confirm("Hapus SEMUA catatan ibadah siswa? Tidak bisa dibatalkan.")||prompt("Ketik HAPUS untuk melanjutkan")!=="HAPUS")return;
+    $("dm").textContent="Menghapus...";
+    const {deleteDoc}=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const r=await getDocs(collection(db,"logs"));await Promise.all(r.docs.map(x=>deleteDoc(x.ref)));
+    await loadData();go("atur");$("dm").textContent="✓ "+r.size+" catatan dihapus."};
+};
 </script></body></html>
