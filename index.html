@@ -218,4 +218,50 @@ go=function(p){
   $("pr").onclick=()=>window.print();
   if($("xl"))$("xl").onclick=exportXl;
 };
+  document.head.insertAdjacentHTML("beforeend",`<style>
+.hero2{background:linear-gradient(135deg,#1fa85a,#0b5d4a 60%,#134e6f);color:#fff;border-radius:18px;padding:18px;margin:0 0 12px;position:relative;overflow:hidden}
+.hero2:after{content:"🌙";position:absolute;right:12px;top:6px;font-size:3.2rem;opacity:.2;pointer-events:none}
+.hero2 h2{margin:0 0 6px;font-size:1.25rem}.hero2 p{margin:0;font-size:.92rem;line-height:1.5}
+.hero2 small{display:block;margin-top:8px;color:#f6d36b}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.sc{border-radius:16px;padding:14px;color:#fff}.sc span{font-size:.8rem;opacity:.92}
+.sc b{display:block;font-size:1.8rem;margin-top:2px}.sc i{font-style:normal;font-size:1.4rem;float:right}
+.sec{border-radius:16px;padding:14px;margin:12px 0;background:var(--c);border:1px solid var(--b)}
+.sec h3{margin:0 0 10px;font-size:1rem}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill input{display:none}
+.pill span{display:block;padding:11px 15px;border-radius:999px;background:var(--bg);border:2px solid var(--b);font-weight:600;cursor:pointer}
+.pill input:checked+span{background:var(--g);border-color:var(--g);color:#fff}
+.pill.sn input:checked+span{background:#7c4dff;border-color:#7c4dff}
+.pill.ot input:checked+span{background:#f59e0b;border-color:#f59e0b}
+.dots{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
+.dots span{aspect-ratio:1;border-radius:50%;background:var(--b)}
+.chip{display:inline-block;padding:4px 10px;border-radius:99px;background:#fde8e8;color:#b42318;font-size:.8rem;margin:2px}
+.pb{height:14px;background:#ffffff40;border-radius:9px;overflow:hidden}
+.pb i{display:block;height:100%;background:linear-gradient(90deg,#fde68a,#f59e0b);transition:.3s}
+</style>`);
+const QT=[["Satu huruf dari Al-Qur'an bernilai satu kebaikan, dan satu kebaikan dilipatgandakan sepuluh kali.","HR. Tirmidzi"],["Puasa itu perisai.","HR. Bukhari dan Muslim"],["Sebaik-baik kalian adalah yang belajar Al-Qur'an dan mengajarkannya.","HR. Bukhari"],["Siapa yang berpuasa Ramadan karena iman dan mengharap pahala, diampuni dosanya yang telah lalu.","HR. Bukhari dan Muslim"],["Siapa yang salat malam di bulan Ramadan karena iman dan mengharap pahala, diampuni dosanya yang telah lalu.","HR. Bukhari dan Muslim"]];
+const sc=(g,i,t,v)=>`<div class="sc" style="background:linear-gradient(135deg,${g})"><i>${i}</i><span>${t}</span><b>${v}</b></div>`;
+
+dash=function(){
+  const T=today(),q=QT[Math.floor(Date.now()/864e5)%QT.length];
+  const hero=`<div class="hero2"><h2>Assalamualaikum, ${esc(me.nama.split(" ")[0])} 👋</h2><p>“${q[0]}”<small>${q[1]}</small></p></div>`;
+  if(me.role==="murid"){const L=LOGS[me.uid]||{},s=stat(L);
+    const dots=Array.from({length:30},(_,i)=>{const c=cnt(L[shift(T,i-29)]);return `<span style="background:${c>=9?"#16a34a":c>0?"#f59e0b":""}"></span>`}).join("");
+    return hero+`<button data-p="input">✍️ Isi ibadah hari ini</button><div class="sg">${sc("#f59e0b,#ea580c","✅","Ibadah hari ini",cnt(L[T])+"/9")}${sc("#3b82f6,#1d4ed8","📖","Total halaman",s.h)}${sc("#10b981,#047857","🌙","Hari berpuasa",s.p)}${sc("#8b5cf6,#6d28d9","🕌","Salat wajib lengkap",s.w+" hari")}</div><div class="sec"><h3>📈 Perjalanan Ramadan</h3>${bar("Salat wajib lengkap",s.w,30)}${bar("Sunnah lengkap (Dhuha + Tarawih)",s.s,30)}${bar("Puasa",s.p,30)}${bar("Bacaan menuju 1 khatam",s.h,604,"halaman")}</div><div class="sec"><h3>🗓️ 30 hari terakhir</h3><div class="dots">${dots}</div><p class="m">Hijau: lengkap · Oranye: sebagian · Abu: belum diisi</p></div>`}
+  const no=USERS.filter(u=>!LOGS[u.id]?.[T]);let h=0;USERS.forEach(u=>h+=stat(LOGS[u.id]||{}).h);
+  const tp=USERS.map(u=>[u,Object.values(LOGS[u.id]||{}).reduce((t,l)=>t+cnt(l),0)]).sort((a,b)=>b[1]-a[1]).slice(0,5).filter(x=>x[1]>0);
+  return hero+`<div class="sg">${sc("#3b82f6,#1d4ed8","👥","Total siswa",USERS.length)}${sc("#10b981,#047857","✅","Mengisi hari ini",USERS.length-no.length)}${sc("#8b5cf6,#6d28d9","📖","Total halaman",h)}${sc("#f59e0b,#ea580c","⏳","Belum mengisi",no.length)}</div><div class="sec"><h3>⏳ Belum mengisi hari ini</h3>${no.map(u=>`<span class="chip">${esc(u.nama)} · ${esc(u.kelas)}</span>`).join("")||"Semua sudah mengisi 🎉"}</div><div class="sec"><h3>🏆 Siswa paling rajin</h3>${tp.map(([u,t],i)=>`<div class="r2"><span>${["🥇","🥈","🥉","4.","5."][i]} ${esc(u.nama)} <span class="m">${esc(u.kelas)}</span></span><b>${t} ibadah</b></div>`).join("")||'<p class="m">Belum ada data.</p>'}</div>`;
+};
+
+input=function(){
+  const L=LOGS[me.uid]??={},l=L[date]??={},n=cnt(l);
+  const E={subuh:"🌅",zuhur:"☀️",asar:"🌤️",magrib:"🌇",isya:"🌙",dhuha:"🌞",tarawih:"🕋",dzikir:"📿",puasa:"⏳"};
+  const pl=(a,c)=>a.map(([k,t])=>`<label class="pill ${c}"><input type="checkbox" data-k="${k}" ${l[k]?"checked":""}><span>${E[k]} ${t}</span></label>`).join("");
+  const bc=(l.bacaan||[]).map((e,i)=>`<div class="r2" style="align-items:center"><span>${NM[e.s]} ${e.a}-${e.b}</span><span>${e.h} hal <button class="ic" data-x="${i}">✕</button></span></div>`).join("");
+  return `<div class="hero2"><div class="r"><button class="ic" id="pv">◀</button><b style="text-align:center;font-size:1.05rem">${date}</b><button class="ic" id="nx">▶</button></div><div class="pb" style="margin-top:12px"><i id="pp" style="width:${n/9*100}%"></i></div><p id="pt" style="margin-top:8px">${n}/9 ibadah hari ini${n===9?" 🎉 MasyaAllah, lengkap!":""}</p></div><div class="sec"><h3>🕌 Salat Wajib</h3><div class="pills">${pl(W,"")}</div></div><div class="sec"><h3>🌟 Salat Sunnah</h3><div class="pills">${pl(S,"sn")}</div></div><div class="sec"><h3>✨ Dzikir dan Puasa</h3><div class="pills">${pl(O,"ot")}</div></div><div class="sec"><h3>📖 Bacaan Al-Qur'an · ${l.halaman||0} halaman hari ini</h3>${bc||'<p class="m">Belum ada bacaan.</p>'}<select id="bs">${NM.map((x,i)=>`<option value="${i}">${i+1}. ${x}</option>`).join("")}</select><div class="r"><input id="a1" type="number" min="1" placeholder="Dari ayat"><input id="a2" type="number" min="1" placeholder="Sampai ayat"><input id="bh" type="number" step="0.5" min="0.5" placeholder="Halaman"></div><p class="m" id="bi">Halaman terisi otomatis (perkiraan), boleh diubah.</p><button id="add2">Tambah bacaan</button><p class="m" id="st"></p></div>`;
+};
+document.addEventListener("change",e=>{if(e.target.dataset?.k===undefined)return;
+  const n=document.querySelectorAll("[data-k]:checked").length;
+  if($("pp")){$("pp").style.width=n/9*100+"%";$("pt").textContent=n+"/9 ibadah hari ini"+(n===9?" 🎉 MasyaAllah, lengkap!":"")}});
 </script></body></html>
